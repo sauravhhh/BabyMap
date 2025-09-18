@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Map - Real-time Birth Counter</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .header p {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .counter-container {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .counter {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .map-container {
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stats-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-grow: 1;
+        }
+        
+        .stats-container h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .country-list {
+            list-style-type: none;
+        }
+        
+        .country-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .country-name {
+            font-weight: 500;
+        }
+        
+        .country-count {
+            background-color: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px 0;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .flash {
+            animation: flash 0.5s ease-in-out;
+        }
+        
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .map-container {
+                height: 400px;
+            }
+            
+            .header h1 {
+                font-size: 28px;
+            }
+            
+            .counter {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Baby Map</h1>
+        <p>Flashes every time a baby is born in that country</p>
+    </div>
+    
+    <div class="counter-container">
+        <div>Total Babies Born: <span id="total-counter" class="counter">0</span></div>
+    </div>
+    
+    <div id="map" class="map-container"></div>
+    
+    <div class="stats-container">
+        <h2>Births by Country</h2>
+        <ul id="country-list" class="country-list">
+            <!-- Fixed countries -->
+            <li class="country-item">
+                <span class="country-name">India</span>
+                <span class="country-count" id="count-India">0</span>
+            </li>
+            <li class="country-item">
+                <span class="country-name">China</span>
+                <span class="country-count" id="count-China">0</span>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="footer">
+        Made with ❤️ by Sauravhhh
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-ajax@2.1.0/dist/leaflet.ajax.min.js"></script>
+    <script>
+        // Initialize map centered on India
+        const map = L.map('map').setView([20.5937, 78.9629], 3);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Country data with coordinates for markers
+        const countries = [
+            { name: 'India', count: 21, lat: 20.5937, lng: 78.9629, color: '#e74c3c', fixed: true },
+            { name: 'China', count: 10, lat: 35.8617, lng: 104.1954, color: '#f39c12', fixed: true },
+            { name: 'Nigeria', count: 5, lat: 9.0820, lng: 8.6753, color: '#27ae60', fixed: false },
+            { name: 'Pakistan', count: 3, lat: 30.3753, lng: 69.3451, color: '#3498db', fixed: false },
+            { name: 'Indonesia', count: 3, lat: -0.7893, lng: 113.9213, color: '#9b59b6', fixed: false },
+            { name: 'Brazil', count: 2, lat: -14.2350, lng: -51.9253, color: '#1abc9c', fixed: false },
+            { name: 'USA', count: 2, lat: 37.0902, lng: -95.7129, color: '#2c3e50', fixed: false },
+            { name: 'Bangladesh', count: 2, lat: 23.6850, lng: 90.3563, color: '#d35400', fixed: false },
+            { name: 'Ethiopia', count: 2, lat: 9.1450, lng: 40.4897, color: '#c0392b', fixed: false },
+            { name: 'DR Congo', count: 1, lat: -4.0383, lng: 21.7587, color: '#16a085', fixed: false },
+            { name: 'Egypt', count: 1, lat: 26.8206, lng: 30.8025, color: '#8e44ad', fixed: false },
+            { name: 'Tanzania', count: 1, lat: -6.3690, lng: 34.8888, color: '#2980b9', fixed: false },
+            { name: 'Turkey', count: 1, lat: 38.9637, lng: 35.2433, color: '#27ae60', fixed: false },
+            { name: 'Iran', count: 1, lat: 32.4279, lng: 53.6880, color: '#f1c40f', fixed: false }
+        ];
+        
+        // Create markers and borders for each country
+        const markers = {};
+        const borders = {};
+        const countryList = document.getElementById('country-list');
+        let totalBabies = 0;
+        let activeCountries = ['India', 'China']; // Start with only India and China
+        
+        // Initialize fixed countries
+        countries.forEach(country => {
+            // Create marker
+            const marker = L.circleMarker([country.lat, country.lng], {
+                radius: 10,
+                fillColor: country.color,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            
+            marker.bindPopup(`<b>${country.name}</b><br>Births: 0`);
+            markers[country.name] = marker;
+            
+            // Create a simple border (circle) around the country
+            const border = L.circle([country.lat, country.lng], {
+                radius: 300000, // 300km radius (adjust as needed)
+                fillColor: country.color,
+                color: country.color,
+                weight: 2,
+                opacity: 0.5,
+                fillOpacity: 0.1
+            }).addTo(map);
+            
+            borders[country.name] = border;
+            
+            // Hide non-fixed countries initially
+            if (!country.fixed) {
+                marker.setStyle({ opacity: 0, fillOpacity: 0 });
+                border.setStyle({ opacity: 0, fillOpacity: 0 });
+            }
+        });
+        
+        // Function to add a country to the list
+        function addCountryToList(countryName) {
+            if (activeCountries.includes(countryName)) return;
+            
+            activeCountries.push(countryName);
+            const country = countries.find(c => c.name === countryName);
+            
+            const listItem = document.createElement('li');
+            listItem.className = 'country-item';
+            listItem.innerHTML = `
+                <span class="country-name">${country.name}</span>
+                <span class="country-count" id="count-${country.name}">0</span>
+            `;
+            countryList.appendChild(listItem);
+            
+            // Show marker and border
+            markers[countryName].setStyle({ opacity: 1, fillOpacity: 0.8 });
+            borders[countryName].setStyle({ opacity: 0.5, fillOpacity: 0.1 });
+        }
+        
+        // Function to simulate a baby birth
+        function simulateBirth() {
+            if (totalBabies >= 55) return; // Stop when we reach 55 babies
+            
+            // Filter to only active countries
+            const activeCountryData = countries.filter(c => activeCountries.includes(c.name));
+            
+            // Select a random country with probability based on their birth counts
+            const weights = activeCountryData.map(c => c.count);
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+            let random = Math.random() * totalWeight;
+            
+            let selectedCountry;
+            for (let i = 0; i < activeCountryData.length; i++) {
+                random -= weights[i];
+                if (random <= 0) {
+                    selectedCountry = activeCountryData[i];
+                    break;
+                }
+            }
+            
+            // Update counters
+            totalBabies++;
+            document.getElementById('total-counter').textContent = totalBabies;
+            
+            const countryCountElement = document.getElementById(`count-${selectedCountry.name}`);
+            const currentCount = parseInt(countryCountElement.textContent);
+            countryCountElement.textContent = currentCount + 1;
+            
+            // Update popup
+            markers[selectedCountry.name].setPopupContent(`<b>${selectedCountry.name}</b><br>Births: ${currentCount + 1}`);
+            
+            // Flash the marker and border
+            const marker = markers[selectedCountry.name];
+            const border = borders[selectedCountry.name];
+            
+            marker.setStyle({ fillOpacity: 1, radius: 15 });
+            border.setStyle({ opacity: 0.8, fillOpacity: 0.3 });
+            marker.getElement().classList.add('flash');
+            
+            setTimeout(() => {
+                marker.setStyle({ fillOpacity: 0.8, radius: 10 });
+                border.setStyle({ opacity: 0.5, fillOpacity: 0.1 });
+                marker.getElement().classList.remove('flash');
+            }, 500);
+            
+            // Randomly add a new country if there are still inactive ones
+            const inactiveCountries = countries.filter(c => !activeCountries.includes(c.name));
+            if (inactiveCountries.length > 0 && Math.random() < 0.3) { // 30% chance to add a new country
+                const randomCountry = inactiveCountries[Math.floor(Math.random() * inactiveCountries.length)];
+                addCountryToList(randomCountry.name);
+            }
+            
+            // Schedule next birth
+            if (totalBabies < 55) {
+                const delay = Math.random() * 2000 + 500; // Random delay between 0.5-2.5 seconds
+                setTimeout(simulateBirth, delay);
+            }
+        }
+        
+        // Start the simulation
+        setTimeout(simulateBirth, 1000);
+    </script>
+</body>
+  </html>
