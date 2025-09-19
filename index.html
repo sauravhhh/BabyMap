@@ -1,1 +1,36 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Map - Real-time Birth Counter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Baby Map</h1>
+        <p>Flashes every time a baby is born in that country</p>
+    </div>
+    
+    <div class="counter-container">
+        <div>Total Babies Born: <span id="total-counter" class="counter">0</span></div>
+    </div>
+    
+    <div id="map" class="map-container"></div>
+    
+    <div class="stats-container">
+        <h2>Births by Country</h2>
+        <ul id="country-list" class="country-list">
+            <!-- Countries will be added dynamically -->
+        </ul>
+    </div>
+    
+    <div class="footer">
+        Made with ❤️ by Sauravhhh
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-ajax@2.1.0/dist/leaflet.ajax.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
